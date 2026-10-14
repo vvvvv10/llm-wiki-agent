@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wiki 管理 - 宠物药品客服</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e3e6ea; --text: #1f2430;
+    --muted: #6b7280; --accent: #2563eb; --danger: #b91c1c; --ok: #059669;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  input[type="password"], input[type="text"], textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; background: #fff; }
+  textarea { min-height: 400px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  .btn { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--text); }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border: none; }
+  .btn.primary:hover { opacity: .9; color: #fff; }
+  .btn.danger { color: var(--danger); }
+  .btn.danger:hover { border-color: var(--danger); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: #f0f4ff; }
+  .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  .summary { color: var(--muted); font-size: 12px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status b { color: var(--text); }
+  .msg { font-size: 13px; margin-top: 10px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .msg.ok { display: block; background: #ecfdf5; color: var(--ok); border: 1px solid #a7f3d0; }
+  .msg.err { display: block; background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .editor-title { font-size: 15px; font-weight: 600; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #eef2ff; color: var(--accent); }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Wiki 在线管理</h1>
+    <p>管理宠物药品知识库文档（含汉维宠仕产品资料），修改后重建索引使问答立即生效。</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <button class="btn primary" id="loadBtn">加载文档列表</button>
+      <button class="btn" id="newBtn">+ 新建文档</button>
+      <button class="btn" id="reindexBtn">重建索引</button>
+      <span class="status" id="health"></span>
+    </div>
+    <div class="msg" id="globalMsg"></div>
+  </div>
+
+  <div class="card" id="listCard">
+    <table>
+      <thead><tr><th>路径</th><th>标题</th><th>摘要</th><th>分段数</th><th></th></tr></thead>
+      <tbody id="docList"><tr><td colspan="5" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card hidden" id="editorCard">
+    <div class="editor-header">
+      <span class="editor-title" id="editorTitle">编辑文档</span>
+      <span class="badge" id="editorBadge"></span>
+    </div>
+    <label for="docPath">文档路径（相对于 wiki/，必须以 .md 结尾）</label>
+    <input id="docPath" type="text" placeholder="例如：expense-policy.md 或 subdir/doc.md" />
+    <label for="docContent" style="margin-top:12px">内容（Markdown）</label>
+    <textarea id="docContent" placeholder="# 标题&#10;&#10;## 小节&#10;&#10;正文内容…"></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" id="saveBtn">保存</button>
+      <button class="btn" id="cancelBtn">取消</button>
+      <span class="hint" style="font-size:12px;color:var(--muted)">保存后需点「重建索引」才会进入检索。</span>
+    </div>
+    <div class="msg" id="editorMsg"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var JSON_HEADERS = { "Content-Type": "application/json" };
+
+  function apiError(res, body) {
+    if (body && body.detail && body.detail.message) return body.detail.message;
+    return "请求失败（HTTP " + res.status + "）";
+  }
+
+  function showMsg(el, text, ok) { el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+  function hideMsg(el) { el.className = "msg"; }
+
+  function loadHealth() {
+    fetch("/health").then(function (r) { return r.json(); }).then(function (d) {
+      $("health").textContent = "";
+      var items = [["文档", d.documents], ["分段", d.chunks], ["索引", d.index_ready ? "就绪" : "不可用"]];
+      items.forEach(function (p) {
+        var s = document.createElement("span");
+        s.style.marginRight = "14px";
+        var b = document.createElement("b"); b.textContent = p[0] + "：";
+        s.appendChild(b); s.appendChild(document.createTextNode(String(p[1])));
+        $("health").appendChild(s);
+      });
+    }).catch(function () { $("health").textContent = "无法连接服务。"; });
+  }
+
+  function loadList() {
+    hideMsg($("globalMsg"));
+    fetch("/v1/wiki/documents", { headers: JSON_HEADERS }).then(function (r) {
+      return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; });
+    }).then(function (r) {
+      if (!r.ok) { showMsg($("globalMsg"), apiError({ status: r.status }, r.body), false); return; }
+      renderList(r.body.items || []);
+    }).catch(function () { showMsg($("globalMsg"), "加载失败。", false); });
+  }
+
+  function renderList(items) {
+    var tbody = $("docList");
+    tbody.textContent = "";
+    if (!items.length) {
+      var tr0 = document.createElement("tr");
+      var td0 = document.createElement("td"); td0.colSpan = 5; td0.className = "empty";
+      td0.textContent = "暂无文档，点击「新建文档」创建。";
+      tr0.appendChild(td0); tbody.appendChild(tr0); return;
+    }
+    items.forEach(function (item) {
+      var tr = document.createElement("tr"); tr.className = "clickable";
+      var tdPath = document.createElement("td"); tdPath.className = "path"; tdPath.textContent = item.path;
+      var tdTitle = document.createElement("td"); tdTitle.textContent = item.title || "";
+      var tdSummary = document.createElement("td"); tdSummary.className = "summary"; tdSummary.textContent = item.summary || "";
+      var tdChunks = document.createElement("td"); tdChunks.textContent = String(item.chunks);
+      var tdOps = document.createElement("td");
+      var editBtn = document.createElement("button"); editBtn.className = "btn"; editBtn.textContent = "编辑";
+      editBtn.addEventListener("click", function (e) { e.stopPropagation(); openEditor(item.path); });
+      var delBtn = document.createElement("button"); delBtn.className = "btn danger"; delBtn.textContent = "删除"; delBtn.style.marginLeft = "6px";
+      delBtn.addEventListener("click", function (e) { e.stopPropagation(); deleteDoc(item.path); });
+      tdOps.appendChild(editBtn); tdOps.appendChild(delBtn);
+      [tdPath, tdTitle, tdSummary, tdChunks, tdOps].forEach(function (td) { tr.appendChild(td); });
+      tr.addEventListener("click", function () { openEditor(item.path); });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openEditor(path) {
+    hideMsg($("editorMsg"));
+    $("editorCard").classList.remove("hidden");
+    $("docPath").value = path || "";
+    $("docPath").disabled = !!path;
+    $("editorBadge").textContent = path ? "编辑" : "新建";
+    if (!path) { $("docContent").value = ""; $("docContent").focus(); return; }
+    fetch("/v1/wiki/documents/" + encodeURIComponent(path).replace(/%2F/g, "/"), { headers: JSON_HEADERS })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
+      .then(function (r) {
+        if (!r.ok) { showMsg($("editorMsg"), apiError({ status: r.status }, r.body), false); return; }
+        $("docContent").value = r.body.content || "";
+      }).catch(function () { showMsg($("editorMsg"), "加载文档内容失败。", false); });
+    $("editorCard").scrollIntoView({ behavior: "smooth" });
+  }
+
+  $("newBtn").addEventListener("click", function () { openEditor(null); });
+  $("cancelBtn").addEventListener("click", function () { $("editorCard").classList.add("hidden"); });
+  $("loadBtn").addEventListener("click", loadList);
+
+  $("saveBtn").addEventListener("click", function () {
+    var path = $("docPath").value.trim();
+    var content = $("docContent").value;
+    if (!path) { showMsg($("editorMsg"), "请填写文档路径。", false); return; }
+    var url = "/v1/wiki/documents/" + path.split("/").map(encodeURIComponent).join("/");
+    fetch(url, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ content: content }) })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
+      .then(function (r) {
+        if (!r.ok) { showMsg($("editorMsg"), apiError({ status: r.status }, r.body), false); return; }
+        showMsg($("editorMsg"), "已保存。点「重建索引」后新内容才会被检索到。", true);
+        loadList();
+      }).catch(function () { showMsg($("editorMsg"), "保存失败。", false); });
+  });
+
+  function deleteDoc(path) {
+    if (!confirm("确定删除 " + path + " ？删除后需重建索引。")) return;
+    var url = "/v1/wiki/documents/" + path.split("/").map(encodeURIComponent).join("/");
+    fetch(url, { method: "DELETE", headers: JSON_HEADERS })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
+      .then(function (r) {
+        if (!r.ok) { showMsg($("globalMsg"), apiError({ status: r.status }, r.body), false); return; }
+        showMsg($("globalMsg"), "已删除 " + path + "。点「重建索引」生效。", true);
+        loadList();
+      }).catch(function () { showMsg($("globalMsg"), "删除失败。", false); });
+  }
+
+  $("reindexBtn").addEventListener("click", function () {
+    hideMsg($("globalMsg"));
+    fetch("/v1/wiki/reindex", { method: "POST", headers: JSON_HEADERS })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, status: r.status, body: b }; }); })
+      .then(function (r) {
+        if (!r.ok) { showMsg($("globalMsg"), apiError({ status: r.status }, r.body), false); return; }
+        var taskId = r.body.task_id;
+        pollTask(taskId);
+      }).catch(function () { showMsg($("globalMsg"), "触发重建失败。", false); });
+  });
+
+  function pollTask(taskId) {
+    fetch("/v1/wiki/reindex/" + taskId, { headers: JSON_HEADERS })
+      .then(function (r) { return r.json(); })
+      .then(function (b) {
+        if (b.status === "RUNNING") { setTimeout(function () { pollTask(taskId); }, 800); return; }
+        if (b.status === "SUCCEEDED") {
+          showMsg($("globalMsg"), "索引重建完成，问答已生效。", true);
+          loadHealth(); loadList();
+        } else {
+          showMsg($("globalMsg"), "索引重建失败：" + (b.error_code || "未知错误"), false);
+        }
+      }).catch(function () { showMsg($("globalMsg"), "查询重建状态失败。", false); });
+  }
+
+  loadHealth();
+  loadList();
+})();
+</script>
+</body>
+</html>

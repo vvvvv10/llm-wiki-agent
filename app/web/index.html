@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>宠物药品客服 - LLM Wiki Agent</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #e3e6ea;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --danger: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .status { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+  .status b { color: var(--text); }
+  label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  input[type="password"], textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+  }
+  textarea { min-height: 84px; resize: vertical; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .presets button {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .presets button:hover { border-color: var(--accent); color: var(--accent); }
+  .actions { margin-top: 12px; display: flex; align-items: center; gap: 12px; }
+  .primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .primary:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .error { color: var(--danger); font-size: 13px; white-space: pre-wrap; }
+  .answer { line-height: 1.7; font-size: 15px; white-space: pre-wrap; word-break: break-word; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .citations { margin-top: 12px; display: grid; gap: 8px; }
+  .citation {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .citation .title { font-weight: 600; }
+  .citation .path { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .citation .excerpt { color: var(--text); margin-top: 4px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>宠物药品客服助手</h1>
+    <p>汉维宠仕犬猫用药知识问答，回答只依据产品资料并附可核对的引用来源。<a href="/admin" style="color:var(--accent);text-decoration:none;margin-left:8px;">Wiki 管理 →</a></p>
+  </header>
+
+  <div class="card">
+    <div class="status" id="status">正在加载服务状态…</div>
+  </div>
+
+  <div class="card">
+    <label for="question">你的问题</label>
+    <textarea id="question" placeholder="例如：汉肤欣治猫癣怎么吃？（Enter 发送，Shift+Enter 换行）"></textarea>
+    <div class="presets" id="presets"></div>
+    <div class="actions">
+      <button class="primary" id="send">发送</button>
+      <span class="hint">回答只依据产品资料 Wiki 证据生成，不构成诊疗建议。</span>
+    </div>
+    <div class="error hidden" id="error"></div>
+  </div>
+
+  <div class="card hidden" id="answerCard">
+    <div class="answer" id="answer"></div>
+    <div class="meta" id="meta"></div>
+    <div class="citations" id="citations"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var PRESETS = [
+    "汉宠净滴剂怎么给狗狗用？",
+    "猫应激有什么办法缓解？",
+    "汉肤欣治猫癣怎么吃？",
+    "环胞舒适用于什么情况？",
+    "体外驱虫和体内驱虫多久做一次？",
+    "宠物用药后出现呕吐怎么办？",
+    "维宠昔是止痛药吗？"
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var questionInput = $("question");
+  var sendButton = $("send");
+  var errorBox = $("error");
+  var answerCard = $("answerCard");
+  var answerBox = $("answer");
+  var citationsBox = $("citations");
+  var metaBox = $("meta");
+
+  PRESETS.forEach(function (q) {
+    var button = document.createElement("button");
+    button.textContent = q;
+    button.addEventListener("click", function () {
+      questionInput.value = q;
+      questionInput.focus();
+    });
+    $("presets").appendChild(button);
+  });
+
+  questionInput.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      send();
+    }
+  });
+  sendButton.addEventListener("click", send);
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.classList.remove("hidden");
+  }
+  function clearError() {
+    errorBox.textContent = "";
+    errorBox.classList.add("hidden");
+  }
+
+  function renderCitations(citations) {
+    citationsBox.textContent = "";
+    (citations || []).forEach(function (c, i) {
+      var card = document.createElement("div");
+      card.className = "citation";
+      var title = document.createElement("div");
+      title.className = "title";
+      title.textContent = "[" + (i + 1) + "] " + c.title + " · " + c.section_title;
+      var path = document.createElement("div");
+      path.className = "path";
+      path.textContent = c.path + "（分段 " + c.chunk_index + "）";
+      var excerpt = document.createElement("div");
+      excerpt.className = "excerpt";
+      excerpt.textContent = c.excerpt;
+      card.appendChild(title);
+      card.appendChild(path);
+      card.appendChild(excerpt);
+      citationsBox.appendChild(card);
+    });
+  }
+
+  function loadHealth() {
+    fetch("/health").then(function (res) { return res.json(); }).then(function (data) {
+      $("status").textContent = "";
+      var items = [
+        ["服务", data.status === "ok" ? "正常" : "异常"],
+        ["索引", data.index_ready ? "就绪" : "不可用"],
+        ["文档数", String(data.documents)],
+        ["分段数", String(data.chunks)],
+        ["模型配置", data.model_configured ? "已配置" : "未配置"]
+      ];
+      if (data.index_error) { items.push(["索引错误", data.index_error]); }
+      items.forEach(function (pair) {
+        var span = document.createElement("span");
+        var label = document.createElement("b");
+        label.textContent = pair[0] + "：";
+        span.appendChild(label);
+        span.appendChild(document.createTextNode(pair[1]));
+        $("status").appendChild(span);
+      });
+    }).catch(function () {
+      $("status").textContent = "无法连接服务，请检查 API 是否已启动。";
+    });
+  }
+  loadHealth();
+  setInterval(loadHealth, 15000);
+
+  function send() {
+    var question = questionInput.value.trim();
+    clearError();
+    if (!question) { showError("请输入问题。"); return; }
+
+    answerCard.classList.remove("hidden");
+    answerBox.textContent = "";
+    citationsBox.textContent = "";
+    metaBox.textContent = "正在检索 Wiki 证据…";
+    sendButton.disabled = true;
+
+    fetch("/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llm-wiki-agent",
+        messages: [{ role: "user", content: question }],
+        stream: true
+      })
+    }).then(function (response) {
+      if (!response.ok) {
+        return response.json().catch(function () { return {}; }).then(function (body) {
+          var message = (body && body.error && body.error.message) || ("请求失败（HTTP " + response.status + "）");
+          throw new Error(message);
+        });
+      }
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = "";
+      var citations = [];
+      var streamFailed = false;
+
+      function handleEvent(payload) {
+        if (payload === "[DONE]") { return; }
+        var event;
+        try { event = JSON.parse(payload); } catch (e) { return; }
+        if (event.object === "chat.completion.chunk" && event.choices && event.choices[0]) {
+          var delta = event.choices[0].delta || {};
+          if (delta.content) { answerBox.textContent += delta.content; }
+        } else if (event.object === "wiki.citations") {
+          citations = event.citations || [];
+          renderCitations(citations);
+        } else if (event.object === "wiki.error") {
+          streamFailed = true;
+          showError((event.error && event.error.message) || "流式回答失败。");
+        }
+      }
+
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) { return; }
+          buffer += decoder.decode(result.value, { stream: true });
+          var parts = buffer.split("\n\n");
+          buffer = parts.pop();
+          parts.forEach(function (part) {
+            part.split("\n").forEach(function (line) {
+              if (line.indexOf("data:") === 0) {
+                handleEvent(line.slice(5).trim());
+              }
+            });
+          });
+          return pump();
+        });
+      }
+      return pump().then(function () {
+        if (!streamFailed && !answerBox.textContent) {
+          metaBox.textContent = "当前 Wiki 中没有足够证据回答这个问题。";
+        } else {
+          metaBox.textContent = "引用来源 " + citations.length + " 条。";
+        }
+      });
+    }).catch(function (err) {
+      showError(err.message || "请求失败。");
+      metaBox.textContent = "";
+    }).finally(function () {
+      sendButton.disabled = false;
+    });
+  }
+})();
+</script>
+</body>
+</html>

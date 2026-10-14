@@ -1,0 +1,23 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${HOST_PORT:-8081}:8080"
+    env_file:
+      - .env
+    environment:
+      WIKI_ROOT: /app/wiki
+    volumes:
+      - ./wiki:/app/wiki:ro
+    restart: unless-stopped
+  # 如需容器化钉钉 Worker，可取消注释下面的 service：
+  # dingtalk-worker:
+  #   build: .
+  #   command: ["python", "-m", "app.dingtalk.runner"]
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     WIKI_ROOT: /app/wiki
+  #   volumes:
+  #     - ./wiki:/app/wiki:ro
+  #   restart: unless-stopped
