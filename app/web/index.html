@@ -6,111 +6,238 @@
 <title>宠物药品客服 - LLM Wiki Agent</title>
 <style>
   :root {
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --border: #e3e6ea;
-    --text: #1f2430;
-    --muted: #6b7280;
-    --accent: #2563eb;
-    --danger: #b91c1c;
+    --primary: #1677ff;
+    --primary-hover: #4096ff;
+    --primary-active: #0958d9;
+    --primary-bg: #e6f4ff;
+    --text: rgba(0, 0, 0, 0.88);
+    --text-2: rgba(0, 0, 0, 0.65);
+    --text-3: rgba(0, 0, 0, 0.45);
+    --border: #d9d9d9;
+    --border-light: #f0f0f0;
+    --bg-layout: #f7f8fa;
+    --bg-container: #ffffff;
+    --danger: #ff4d4f;
+    --ok: #52c41a;
+    --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+    --shadow-2: 0 6px 16px -8px rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
+    display: flex;
+    flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    background: var(--bg);
+    background: var(--bg-layout);
     color: var(--text);
-  }
-  .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
-  header h1 { font-size: 22px; margin: 0 0 4px; }
-  header p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  .status { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
-  .status b { color: var(--text); }
-  label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
-  input[type="password"], textarea {
-    width: 100%;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
     font-size: 14px;
+  }
+  /* ---------- 顶栏 ---------- */
+  .navbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 20px;
+    height: 56px;
+    background: var(--bg-container);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1677ff, #722ed1);
+    color: #fff; font-weight: 700; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-1);
+  }
+  .brand-title { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .brand-tag {
+    font-size: 12px; color: var(--primary);
+    background: var(--primary-bg);
+    border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+  }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-2); white-space: nowrap;
+  }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .status.err .dot { background: var(--danger); }
+  .nav-link {
+    font-size: 13px; color: var(--text-2); text-decoration: none;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 12px; background: var(--bg-container);
+    transition: all 0.2s;
+  }
+  .nav-link:hover { color: var(--primary); border-color: var(--primary-hover); }
+  /* ---------- 主区域 ---------- */
+  main { flex: 1; overflow-y: auto; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 24px 16px; min-height: 100%; display: flex; flex-direction: column; }
+  /* 欢迎屏 */
+  .welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 0; }
+  .welcome-avatar {
+    width: 72px; height: 72px; border-radius: 20px;
+    background: linear-gradient(135deg, #1677ff, #722ed1);
+    color: #fff; font-size: 34px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-2);
+    margin-bottom: 20px;
+  }
+  .welcome h1 { font-size: 24px; margin: 0 0 8px; font-weight: 600; }
+  .welcome .sub { color: var(--text-2); font-size: 14px; line-height: 1.7; max-width: 460px; margin: 0 0 24px; }
+  .prompts-title { font-size: 13px; color: var(--text-3); margin: 0 0 12px; }
+  .prompts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 640px; }
+  .prompt {
+    display: flex; align-items: center; gap: 10px;
+    text-align: left; cursor: pointer;
+    background: var(--bg-container);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13.5px; color: var(--text);
     font-family: inherit;
-    background: #fff;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-1);
   }
-  textarea { min-height: 84px; resize: vertical; }
-  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .presets button {
-    border: 1px solid var(--border);
-    background: #fff;
-    border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--text);
+  .prompt:hover { border-color: var(--primary-hover); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+  .prompt .pi {
+    flex: none; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--primary-bg); color: var(--primary);
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
   }
-  .presets button:hover { border-color: var(--accent); color: var(--accent); }
-  .actions { margin-top: 12px; display: flex; align-items: center; gap: 12px; }
-  .primary {
-    background: var(--accent);
+  /* 对话区 */
+  .messages { flex: 1; display: none; flex-direction: column; gap: 20px; }
+  .messages.on { display: flex; }
+  .row { display: flex; align-items: flex-start; gap: 10px; }
+  .row.user { flex-direction: row-reverse; }
+  .avatar {
+    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #1677ff, #722ed1);
+    color: #fff; font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .avatar.me { background: #f0f0f0; color: var(--text-2); }
+  .bubble {
+    max-width: 86%;
+    border-radius: 16px;
+    padding: 10px 14px;
+    font-size: 14px; line-height: 1.75;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .row.user .bubble {
+    background: linear-gradient(135deg, #1677ff, #4096ff);
     color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 14px;
-    cursor: pointer;
+    border-bottom-right-radius: 4px;
   }
-  .primary:disabled { opacity: .5; cursor: not-allowed; }
-  .hint { font-size: 12px; color: var(--muted); }
-  .error { color: var(--danger); font-size: 13px; white-space: pre-wrap; }
-  .answer { line-height: 1.7; font-size: 15px; white-space: pre-wrap; word-break: break-word; }
-  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .citations { margin-top: 12px; display: grid; gap: 8px; }
+  .row.bot .bubble {
+    background: var(--bg-container);
+    border: 1px solid var(--border-light);
+    border-bottom-left-radius: 4px;
+    box-shadow: var(--shadow-1);
+  }
+  .typing { display: inline-flex; gap: 4px; padding: 6px 2px; }
+  .typing i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-3);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .typing i:nth-child(2) { animation-delay: 0.2s; }
+  .typing i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+  .meta { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+  .citations { margin-top: 10px; display: grid; gap: 8px; }
   .citation {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 13px;
+    background: var(--bg-layout);
+    border: 1px solid var(--border-light);
+    border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
   }
   .citation .title { font-weight: 600; }
-  .citation .path { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  .citation .excerpt { color: var(--text); margin-top: 4px; }
-  .hidden { display: none; }
+  .citation .path { color: var(--text-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; margin-top: 2px; }
+  .citation .excerpt { color: var(--text-2); margin-top: 4px; line-height: 1.6; }
+  /* ---------- 底部输入 ---------- */
+  .footer { flex: none; padding: 12px 16px 16px; background: var(--bg-layout); }
+  .footer-inner { max-width: 800px; margin: 0 auto; }
+  .error {
+    display: none; margin-bottom: 10px;
+    background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322;
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; white-space: pre-wrap;
+  }
+  .error.on { display: block; }
+  .sender {
+    display: flex; align-items: flex-end; gap: 8px;
+    background: var(--bg-container);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 8px 8px 8px 16px;
+    box-shadow: var(--shadow-2);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .sender:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15), var(--shadow-2); }
+  #question {
+    flex: 1; border: none; outline: none; resize: none;
+    font-family: inherit; font-size: 14px; line-height: 1.6;
+    padding: 6px 0; max-height: 140px; background: transparent; color: var(--text);
+  }
+  #question::placeholder { color: var(--text-3); }
+  .send {
+    flex: none; width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary); color: #fff; border: none; cursor: pointer;
+    font-size: 15px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .send:hover { background: var(--primary-hover); }
+  .send:active { background: var(--primary-active); }
+  .send:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hint { font-size: 12px; color: var(--text-3); margin-top: 8px; text-align: center; }
+  @media (max-width: 640px) {
+    .prompts { grid-template-columns: 1fr; }
+    .brand-tag { display: none; }
+    .status { display: none; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>宠物药品客服助手</h1>
-    <p>汉维宠仕犬猫用药知识问答，回答只依据产品资料并附可核对的引用来源。<a href="/admin" style="color:var(--accent);text-decoration:none;margin-left:8px;">Wiki 管理 →</a></p>
+  <header class="navbar">
+    <div class="brand">
+      <div class="logo">W</div>
+      <span class="brand-title">宠物药品客服助手</span>
+      <span class="brand-tag">LLM Wiki Agent</span>
+    </div>
+    <div class="nav-right">
+      <span class="status" id="status"><span class="dot"></span><span id="statusText">加载中…</span></span>
+      <a class="nav-link" href="/admin">Wiki 管理</a>
+    </div>
   </header>
 
-  <div class="card">
-    <div class="status" id="status">正在加载服务状态…</div>
-  </div>
+  <main id="main">
+    <div class="wrap">
+      <section class="welcome" id="welcome">
+        <div class="welcome-avatar">W</div>
+        <h1>你好，我是宠物用药知识助手</h1>
+        <p class="sub">汉维宠仕犬猫用药知识问答，回答只依据产品资料并附可核对的引用来源。</p>
+        <p class="prompts-title">我可以帮您：</p>
+        <div class="prompts" id="prompts"></div>
+      </section>
 
-  <div class="card">
-    <label for="question">你的问题</label>
-    <textarea id="question" placeholder="例如：汉肤欣治猫癣怎么吃？（Enter 发送，Shift+Enter 换行）"></textarea>
-    <div class="presets" id="presets"></div>
-    <div class="actions">
-      <button class="primary" id="send">发送</button>
-      <span class="hint">回答只依据产品资料 Wiki 证据生成，不构成诊疗建议。</span>
+      <section class="messages" id="messages"></section>
     </div>
-    <div class="error hidden" id="error"></div>
-  </div>
+  </main>
 
-  <div class="card hidden" id="answerCard">
-    <div class="answer" id="answer"></div>
-    <div class="meta" id="meta"></div>
-    <div class="citations" id="citations"></div>
-  </div>
-</div>
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="error" id="error"></div>
+      <div class="sender">
+        <textarea id="question" rows="1" placeholder="向我提问，例如：汉肤欣治猫癣怎么吃？"></textarea>
+        <button class="send" id="send" title="发送" aria-label="发送">➤</button>
+      </div>
+      <div class="hint">Enter 发送，Shift+Enter 换行 · 回答只依据产品资料 Wiki 证据生成，不构成诊疗建议</div>
+    </div>
+  </footer>
 
 <script>
 (function () {
@@ -123,45 +250,100 @@
     "宠物用药后出现呕吐怎么办？",
     "维宠昔是止痛药吗？"
   ];
+  var ICONS = ["💧", "😿", "🧴", "💊", "🐾", "🤮", "🩹"];
 
   var $ = function (id) { return document.getElementById(id); };
   var questionInput = $("question");
   var sendButton = $("send");
   var errorBox = $("error");
-  var answerCard = $("answerCard");
-  var answerBox = $("answer");
-  var citationsBox = $("citations");
-  var metaBox = $("meta");
+  var welcome = $("welcome");
+  var messagesBox = $("messages");
+  var main = $("main");
+  var history = [];
 
-  PRESETS.forEach(function (q) {
+  // ---------- 预设问题 ----------
+  PRESETS.forEach(function (q, i) {
     var button = document.createElement("button");
-    button.textContent = q;
-    button.addEventListener("click", function () {
-      questionInput.value = q;
-      questionInput.focus();
-    });
-    $("presets").appendChild(button);
+    button.className = "prompt";
+    var icon = document.createElement("span");
+    icon.className = "pi";
+    icon.textContent = ICONS[i] || "💬";
+    var label = document.createElement("span");
+    label.textContent = q;
+    button.appendChild(icon);
+    button.appendChild(label);
+    button.addEventListener("click", function () { send(q); });
+    $("prompts").appendChild(button);
   });
 
+  // ---------- 输入 ----------
   questionInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       send();
     }
   });
-  sendButton.addEventListener("click", send);
+  questionInput.addEventListener("input", function () {
+    questionInput.style.height = "auto";
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 140) + "px";
+  });
+  sendButton.addEventListener("click", function () { send(); });
 
   function showError(message) {
     errorBox.textContent = message;
-    errorBox.classList.remove("hidden");
+    errorBox.classList.add("on");
   }
   function clearError() {
     errorBox.textContent = "";
-    errorBox.classList.add("hidden");
+    errorBox.classList.remove("on");
   }
 
-  function renderCitations(citations) {
-    citationsBox.textContent = "";
+  // ---------- 消息渲染（全部 textContent，避免把模型内容当 HTML 执行） ----------
+  function addUserBubble(text) {
+    var row = document.createElement("div");
+    row.className = "row user";
+    var avatar = document.createElement("div");
+    avatar.className = "avatar me";
+    avatar.textContent = "我";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesBox.appendChild(row);
+    scrollBottom();
+    return bubble;
+  }
+
+  function addBotBubble() {
+    var row = document.createElement("div");
+    row.className = "row bot";
+    var avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = "W";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    var typing = document.createElement("span");
+    typing.className = "typing";
+    for (var i = 0; i < 3; i++) { typing.appendChild(document.createElement("i")); }
+    bubble.appendChild(typing);
+    var body = document.createElement("div");
+    bubble.appendChild(body);
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    bubble.appendChild(meta);
+    var citations = document.createElement("div");
+    citations.className = "citations";
+    bubble.appendChild(citations);
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesBox.appendChild(row);
+    scrollBottom();
+    return { body: body, meta: meta, citations: citations, typing: typing };
+  }
+
+  function renderCitations(box, citations) {
+    box.textContent = "";
     (citations || []).forEach(function (c, i) {
       var card = document.createElement("div");
       card.className = "citation";
@@ -177,53 +359,55 @@
       card.appendChild(title);
       card.appendChild(path);
       card.appendChild(excerpt);
-      citationsBox.appendChild(card);
+      box.appendChild(card);
     });
   }
 
+  function scrollBottom() {
+    main.scrollTop = main.scrollHeight;
+  }
+
+  // ---------- 健康状态 ----------
   function loadHealth() {
     fetch("/health").then(function (res) { return res.json(); }).then(function (data) {
-      $("status").textContent = "";
-      var items = [
-        ["服务", data.status === "ok" ? "正常" : "异常"],
-        ["索引", data.index_ready ? "就绪" : "不可用"],
-        ["文档数", String(data.documents)],
-        ["分段数", String(data.chunks)],
-        ["模型配置", data.model_configured ? "已配置" : "未配置"]
-      ];
-      if (data.index_error) { items.push(["索引错误", data.index_error]); }
-      items.forEach(function (pair) {
-        var span = document.createElement("span");
-        var label = document.createElement("b");
-        label.textContent = pair[0] + "：";
-        span.appendChild(label);
-        span.appendChild(document.createTextNode(pair[1]));
-        $("status").appendChild(span);
-      });
+      var ok = data.status === "ok" && data.index_ready;
+      $("status").classList.toggle("err", !ok);
+      var text = "服务正常";
+      if (!data.index_ready) { text = "索引不可用"; }
+      if (data.status !== "ok") { text = "服务异常"; }
+      text += " · 文档 " + data.documents + " · 分段 " + data.chunks;
+      if (data.index_error) { text += " · " + data.index_error; }
+      $("statusText").textContent = text;
     }).catch(function () {
-      $("status").textContent = "无法连接服务，请检查 API 是否已启动。";
+      $("status").classList.add("err");
+      $("statusText").textContent = "无法连接服务";
     });
   }
   loadHealth();
   setInterval(loadHealth, 15000);
 
-  function send() {
-    var question = questionInput.value.trim();
+  // ---------- 发送 ----------
+  function send(presetText) {
+    var question = (presetText !== undefined ? presetText : questionInput.value).trim();
     clearError();
     if (!question) { showError("请输入问题。"); return; }
 
-    answerCard.classList.remove("hidden");
-    answerBox.textContent = "";
-    citationsBox.textContent = "";
-    metaBox.textContent = "正在检索 Wiki 证据…";
+    questionInput.value = "";
+    questionInput.style.height = "auto";
+    welcome.style.display = "none";
+    messagesBox.classList.add("on");
+
+    addUserBubble(question);
+    var bot = addBotBubble();
     sendButton.disabled = true;
+    history.push({ role: "user", content: question });
 
     fetch("/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "llm-wiki-agent",
-        messages: [{ role: "user", content: question }],
+        messages: history.slice(-10),
         stream: true
       })
     }).then(function (response) {
@@ -238,6 +422,7 @@
       var buffer = "";
       var citations = [];
       var streamFailed = false;
+      var started = false;
 
       function handleEvent(payload) {
         if (payload === "[DONE]") { return; }
@@ -245,10 +430,14 @@
         try { event = JSON.parse(payload); } catch (e) { return; }
         if (event.object === "chat.completion.chunk" && event.choices && event.choices[0]) {
           var delta = event.choices[0].delta || {};
-          if (delta.content) { answerBox.textContent += delta.content; }
+          if (delta.content) {
+            if (!started) { bot.typing.remove(); started = true; }
+            bot.body.textContent += delta.content;
+            scrollBottom();
+          }
         } else if (event.object === "wiki.citations") {
           citations = event.citations || [];
-          renderCitations(citations);
+          renderCitations(bot.citations, citations);
         } else if (event.object === "wiki.error") {
           streamFailed = true;
           showError((event.error && event.error.message) || "流式回答失败。");
@@ -272,17 +461,25 @@
         });
       }
       return pump().then(function () {
-        if (!streamFailed && !answerBox.textContent) {
-          metaBox.textContent = "当前 Wiki 中没有足够证据回答这个问题。";
+        bot.typing.remove();
+        if (!streamFailed && !bot.body.textContent) {
+          bot.meta.textContent = "当前 Wiki 中没有足够证据回答这个问题。";
         } else {
-          metaBox.textContent = "引用来源 " + citations.length + " 条。";
+          bot.meta.textContent = "引用来源 " + citations.length + " 条";
         }
+        if (bot.body.textContent) {
+          history.push({ role: "assistant", content: bot.body.textContent });
+          if (history.length > 20) { history = history.slice(-20); }
+        }
+        scrollBottom();
       });
     }).catch(function (err) {
+      bot.typing.remove();
       showError(err.message || "请求失败。");
-      metaBox.textContent = "";
+      bot.meta.textContent = "";
     }).finally(function () {
       sendButton.disabled = false;
+      questionInput.focus();
     });
   }
 })();
