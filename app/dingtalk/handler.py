@@ -5,6 +5,10 @@
   卡片创建失败自动回退到纯文本回复。
 - 非流式模式：调用 ``AnswerService.answer()`` 一次性回复正文 + 来源。
 - 任何异常统一回复提示语，堆栈写入 ``stream.log``（由 runner 配置的日志文件）。
+- ``process()`` 必须返回 ``(code, body)`` 元组：SDK 的 ``raw_process`` 会
+  解包该返回值构造 ACK 回执发给钉钉服务器。返回 ``None`` 会导致解包失败、
+  ACK 缺失，钉钉判定消费失败并在约 60 秒后重投同一条消息，群里就会出现
+  两条相同的回复。
 """
 
 from __future__ import annotations
@@ -143,11 +147,15 @@ def create_chatbot_handler(answer_service: AnswerService, settings: Settings | N
     dingtalk-stream 是可选依赖，缺失时给出明确错误。
     """
     try:
-        from dingtalk_stream import ChatbotHandler
+        from dingtalk_stream import AckMessage, ChatbotHandler
     except ImportError as exc:  # pragma: no cover - 取决于运行环境
         raise RuntimeError(
             "缺少 dingtalk-stream 依赖，请执行 pip install dingtalk-stream"
         ) from exc
+
+    # ACK 契约：raw_process 会 `code, message = await self.process(...)`，
+    # 所有路径都必须返回二元组，否则钉钉重投消息造成重复回复。
+    ack_ok = (AckMessage.STATUS_OK, {})
 
     class WikiChatbotHandler(ChatbotHandler):
         def __init__(self) -> None:
@@ -173,11 +181,11 @@ def create_chatbot_handler(answer_service: AnswerService, settings: Settings | N
                 question = _extract_text(message)
                 if not question:
                     self.reply_text("请在群里发送文本问题。", message)
-                    return None
+                    return ack_ok
 
                 if self._streaming_enabled():
                     if await self._process_streaming_card(question, message):
-                        return None
+                        return ack_ok
 
                 answer = self.answer_service.answer(
                     [{"role": "user", "content": question}]
@@ -190,7 +198,7 @@ def create_chatbot_handler(answer_service: AnswerService, settings: Settings | N
                     self.reply_text(ERROR_TEXT, message)
                 except Exception:  # pragma: no cover - 网络异常
                     logger.exception("failed to send error reply")
-            return None
+            return ack_ok
 
         def _streaming_enabled(self) -> bool:
             return bool(self.settings and self.settings.dingtalk_streaming_card)

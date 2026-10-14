@@ -110,6 +110,65 @@ def test_handler_empty_question_prompts_user():
     assert "文本问题" in replies[0]
 
 
+def test_handler_process_returns_ack_tuple():
+    """process() 必须返回 (code, body) 二元组供 SDK raw_process 构造 ACK。
+
+    回归：曾返回 None，导致 ACK 缺失、钉钉重投同一条消息、群里出现两条相同回复。
+    """
+    from dingtalk_stream import AckMessage
+
+    handler = create_chatbot_handler(_answer_service(), make_settings())
+    handler.reply_text = lambda text, message: None
+
+    result = asyncio.run(handler.process(FakeMessage("什么是 RAG？")))
+    assert isinstance(result, tuple)
+    code, body = result
+    assert code == AckMessage.STATUS_OK
+    assert body == {}
+
+
+def test_handler_process_returns_ack_tuple_on_empty_question():
+    from dingtalk_stream import AckMessage
+
+    handler = create_chatbot_handler(_answer_service(), make_settings())
+    handler.reply_text = lambda text, message: None
+
+    result = asyncio.run(handler.process(FakeMessage("")))
+    assert result == (AckMessage.STATUS_OK, {})
+
+
+def test_handler_process_returns_ack_tuple_on_error():
+    from dingtalk_stream import AckMessage
+
+    class BrokenGateway(FakeGateway):
+        def chat(self, request):
+            raise RuntimeError("boom")
+
+    handler = create_chatbot_handler(_answer_service(BrokenGateway()), make_settings())
+    handler.reply_text = lambda text, message: None
+
+    result = asyncio.run(handler.process(FakeMessage("什么是 RAG？")))
+    assert result == (AckMessage.STATUS_OK, {})
+
+
+def test_handler_process_returns_ack_tuple_when_streaming_card_ok(monkeypatch):
+    """流式卡片成功路径同样要返回 ACK 元组（重复回复就发生在该主路径上）。"""
+    from dingtalk_stream import AckMessage
+
+    from app.dingtalk.handler import run_streaming_card as real_run
+
+    handler = create_chatbot_handler(_answer_service(), make_settings())
+    handler.reply_text = lambda text, message: None
+    monkeypatch.setattr(
+        "app.dingtalk.handler.run_streaming_card",
+        lambda card, service, question: card.ai_finish("ok"),
+    )
+    assert real_run is not None
+
+    result = asyncio.run(handler.process(FakeMessage("什么是 RAG？")))
+    assert result == (AckMessage.STATUS_OK, {})
+
+
 def test_handler_error_returns_standard_message(monkeypatch):
     class BrokenGateway(FakeGateway):
         def chat(self, request):
