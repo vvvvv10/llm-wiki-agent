@@ -86,6 +86,8 @@ def build_answer_service(settings: Settings) -> AnswerService:
         api_key=settings.llm_api_key,
         model=settings.llm_model,
         timeout_seconds=settings.llm_timeout_seconds,
+        enable_thinking=settings.llm_enable_thinking,
+        max_tokens=settings.llm_max_tokens,
     )
     return AnswerService(
         index_store=store,

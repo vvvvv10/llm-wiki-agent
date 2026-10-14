@@ -66,6 +66,8 @@ docker compose up --build
 | `LLM_BASE_URL` | `http://localhost:8001/v1` | OpenAI Compatible 接口地址（如阿里百炼 `.../compatible-mode/v1`） |
 | `LLM_API_KEY` | — | 模型 API Key |
 | `LLM_MODEL` | `local-model` | 模型名 |
+| `LLM_ENABLE_THINKING` | 不传参 | 三态：`0` 关 / `1` 开 / 不设置则请求里不带该参数。qwen3 系列默认先"思考"再回答（约多 15s），客服场景建议设 `0` |
+| `LLM_MAX_TOKENS` | 不限制 | 回答生成的 token 上限，防止超长输出 |
 
 检索与分段：
 

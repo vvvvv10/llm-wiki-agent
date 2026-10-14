@@ -93,6 +93,8 @@ def make_settings(**overrides):
         llm_api_key="",
         llm_model="local-model",
         llm_timeout_seconds=5.0,
+        llm_enable_thinking=None,
+        llm_max_tokens=None,
         retrieval_top_k=5,
         retrieval_min_score=0.1,
         max_context_chars=12000,

@@ -152,3 +152,39 @@ def test_stream_status_error_raises():
     gateway = _gateway(lambda request: httpx.Response(401, json={}))
     with pytest.raises(ModelAuthenticationError):
         list(gateway.stream(_request()))
+
+
+def _capturing_gateway(**kwargs) -> tuple[ModelGateway, list]:
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(
+            200, json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]}
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    gateway = ModelGateway(
+        base_url="http://llm.example.com/v1",
+        api_key="k",
+        model="m",
+        client=client,
+        **kwargs,
+    )
+    return gateway, bodies
+
+
+def test_payload_omits_optional_params_by_default():
+    """默认不携带 enable_thinking / max_tokens——对任意 OpenAI 兼容后端安全。"""
+    gateway, bodies = _capturing_gateway()
+    gateway.chat(_request())
+    assert "enable_thinking" not in bodies[0]
+    assert "max_tokens" not in bodies[0]
+
+
+def test_payload_includes_optional_params_when_configured():
+    gateway, bodies = _capturing_gateway(enable_thinking=False, max_tokens=800)
+    gateway.chat(_request())
+    assert bodies[0]["enable_thinking"] is False
+    assert bodies[0]["max_tokens"] == 800

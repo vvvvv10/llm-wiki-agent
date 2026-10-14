@@ -45,6 +45,18 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw in ("1", "true", "yes", "on")
 
 
+def _env_bool_or_none(name: str) -> bool | None:
+    """三态布尔：未设置返回 None（请求里不带该参数）。
+
+    存在与否对上游兼容性很关键——qwen 系列支持 ``enable_thinking``，
+    但部分 OpenAI 兼容后端遇到未知参数会 400，所以默认不传。
+    """
+    raw = _env(name).lower()
+    if raw == "":
+        return None
+    return raw in ("1", "true", "yes", "on")
+
+
 @dataclass(frozen=True)
 class Settings:
     app_host: str
@@ -55,6 +67,8 @@ class Settings:
     llm_api_key: str
     llm_model: str
     llm_timeout_seconds: float
+    llm_enable_thinking: bool | None
+    llm_max_tokens: int | None
     retrieval_top_k: int
     retrieval_min_score: float
     max_context_chars: int
@@ -86,6 +100,10 @@ def get_settings() -> Settings:
         llm_api_key=_env("LLM_API_KEY"),
         llm_model=_env("LLM_MODEL", "local-model"),
         llm_timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 30.0),
+        llm_enable_thinking=_env_bool_or_none("LLM_ENABLE_THINKING"),
+        llm_max_tokens=(
+            _env_int("LLM_MAX_TOKENS", 0) or None
+        ),  # 0/未设置 = 不限制，请求里不带该参数
         retrieval_top_k=_env_int("RETRIEVAL_TOP_K", 5),
         retrieval_min_score=_env_float("RETRIEVAL_MIN_SCORE", 0.1),
         max_context_chars=_env_int("MAX_CONTEXT_CHARS", 12000),

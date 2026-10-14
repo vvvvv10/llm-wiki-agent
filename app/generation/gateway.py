@@ -44,12 +44,19 @@ class ModelGateway:
         api_key: str,
         model: str,
         timeout_seconds: float = 30.0,
+        enable_thinking: bool | None = None,
+        max_tokens: int | None = None,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
+        # None 表示请求里不携带该参数（对任意 OpenAI 兼容后端安全）。
+        # qwen3 系列默认开启思考模式：先生成大段 reasoning 再输出正文，
+        # 客服场景证据已随 prompt 给全，关掉思考可把回答耗时从 ~20s 降到 ~5s。
+        self.enable_thinking = enable_thinking
+        self.max_tokens = max_tokens
         self._client = client or httpx.Client(timeout=timeout_seconds)
         self._owns_client = client is None
 
@@ -121,7 +128,7 @@ class ModelGateway:
         }
 
     def _payload(self, request: ModelRequest, stream: bool) -> dict:
-        return {
+        payload: dict = {
             "model": self.model,
             "messages": [
                 {"role": message.role, "content": message.content}
@@ -129,6 +136,11 @@ class ModelGateway:
             ],
             "stream": stream,
         }
+        if self.enable_thinking is not None:
+            payload["enable_thinking"] = self.enable_thinking
+        if self.max_tokens is not None:
+            payload["max_tokens"] = self.max_tokens
+        return payload
 
     def _post(self, payload: dict) -> httpx.Response:
         try:
